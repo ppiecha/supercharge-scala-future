@@ -49,7 +49,7 @@ object UserCreationExercises {
     StdIn.readLine().toLowerCase() match {
       case "y" => true
       case "n" => false
-      case _ => throw new IllegalArgumentException("wrong answer")
+      case _   => throw new IllegalArgumentException("Wrong format")
     }
   }
 
@@ -67,7 +67,7 @@ object UserCreationExercises {
     console.readLine().toLowerCase match {
       case "y" => true
       case "n" => false
-      case _ => throw new IllegalArgumentException("wrong answer")      
+      case _   => throw new IllegalArgumentException("Wrong format")
     }
   }
 
@@ -110,9 +110,9 @@ object UserCreationExercises {
     console.writeLine("What's your name?")
     console.readLine()
   }
-  
+
   def readUser(console: Console, clock: Clock): User =
-    User(readName(console), readDateOfBirth(console), clock.now(), readSubscribeToMailingList(console))
+    User(readName(console), readDateOfBirthRetry(console, 3), clock.now(), readSubscribeToMailingListRetry(console, 3))
 
   //////////////////////////////////////////////
   // PART 2: Error handling
@@ -135,8 +135,34 @@ object UserCreationExercises {
   // Note: `maxAttempt` must be greater than 0, if not you should throw an exception.
   // Note: You can implement the retry logic using recursion or a for/while loop. I suggest
   //       trying both possibilities.
-  def readSubscribeToMailingListRetry(console: Console, maxAttempt: Int): Boolean =
-    ???
+  // @tailrec
+  def parseYesNo(line: String): Boolean = line.toLowerCase match {
+    case "y" => true
+    case "n" => false
+    case _ => throw new IllegalArgumentException("Wrong format")
+  } 
+  
+  def readSubscribeToMailingListRetry(console: Console, maxAttempt: Int): Boolean = 
+    retry(maxAttempt) {
+      console.writeLine("Would you like to subscribe to our mailing list? [Y/N]")
+      onError(parseYesNo(console.readLine()), _ => console.writeLine("""Incorrect format, enter "Y" for Yes or "N" for "No""""))
+    }
+  // {
+  //   require(maxAttempt > 0, "maxAttempt must be greater than zero")
+  //   console.writeLine("Would you like to subscribe to our mailing list? [Y/N]")
+  //   console.readLine().toLowerCase() match {
+  //     case "y" => true
+  //     case "n" => false
+  //     case _   => {
+  //       console.writeLine("""Incorrect format, enter "Y" for Yes or "N" for "No"""")
+  //       if (maxAttempt > 1) {
+  //         readSubscribeToMailingListRetry(console, maxAttempt - 1)
+  //       } else {
+  //         throw new IllegalArgumentException("Wrong format")
+  //       }
+  //     }
+  //   }
+  // }
 
   // 6. Implement `readDateOfBirthRetry` which behaves like
   // `readDateOfBirth` but retries when the user enters an invalid input.
@@ -153,8 +179,22 @@ object UserCreationExercises {
   // [Prompt] Incorrect format, for example enter "18-03-2001" for 18th of March 2001
   // Throws an exception because the user only had 1 attempt and they entered an invalid input.
   // Note: `maxAttempt` must be greater than 0, if not you should throw an exception.
-  def readDateOfBirthRetry(console: Console, maxAttempt: Int): LocalDate =
-    ???
+  @tailrec
+  def readDateOfBirthRetry(console: Console, maxAttempt: Int): LocalDate = {
+    require(maxAttempt > 0)
+    console.writeLine("What's your date of birth? [dd-mm-yyyy]")
+    Try(LocalDate.parse(console.readLine(), dateOfBirthFormatter)) match {
+      case Success(date) => date
+      case Failure(_) => {
+        console.writeLine("""Incorrect format, for example enter "18-03-2001" for 18th of March 2001""")
+        if (maxAttempt > 1) {
+          readDateOfBirthRetry(console, maxAttempt - 1)
+        } else {
+          throw new IllegalArgumentException("Incorrect format")
+        }
+      }
+    }
+  }
 
   // 7. Update `readUser` so that it allows the user to make up to 2 mistakes (3 attempts)
   // when entering their date of birth and mailing list subscription flag.
