@@ -111,6 +111,7 @@ object UserCreationExercises {
     console.readLine()
   }
 
+
   def readUser(console: Console, clock: Clock): User =
     User(readName(console), readDateOfBirthRetry(console, 3), clock.now(), readSubscribeToMailingListRetry(console, 3))
 
