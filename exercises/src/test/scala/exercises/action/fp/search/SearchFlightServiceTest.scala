@@ -12,13 +12,16 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import java.time.{Duration, Instant, LocalDate}
 import scala.concurrent.ExecutionContext
 import scala.util.Random
+import java.time.ZoneId
 
 // Run the test using the green arrow next to class name (if using IntelliJ)
 // or run `sbt` in the terminal to open it in shell mode, then type:
 // testOnly exercises.action.fp.search.SearchFlightServiceTest
 class SearchFlightServiceTest extends AnyFunSuite with ScalaCheckDrivenPropertyChecks {
 
-  ignore("fromTwoClients example") {
+   implicit val ec = scala.concurrent.ExecutionContext.global
+   
+   test("fromTwoClients example") {
     val now   = Instant.now()
     val today = LocalDate.now()
 
@@ -34,6 +37,24 @@ class SearchFlightServiceTest extends AnyFunSuite with ScalaCheckDrivenPropertyC
     val result  = service.search(parisOrly, londonGatwick, today).unsafeRun()
 
     assert(result == SearchResult(List(flight1, flight2, flight3, flight4)))
+  }
+
+  val dateGen = Gen
+    .choose(
+      LocalDate.of(2020, 1, 1).toEpochDay(),
+      LocalDate.of(2060, 1, 1).toEpochDay()
+    )
+    .map(LocalDate.ofEpochDay)
+
+  test("fromClients sucess") {
+    forAll(Gen.listOf(SearchFlightGenerator.clientGen), airportGen, airportGen, dateGen) { (clients, from, to, date) =>
+      val result = SearchFlightService.fromClients(clients).search(from, to, date).unsafeRun()
+      result.flights.foreach { flight => 
+        assert(flight.from == from)
+        assert(flight.to == to)
+        assert(flight.departureDate == date)      
+      }
+    }
   }
 
 }

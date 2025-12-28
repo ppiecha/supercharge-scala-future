@@ -23,10 +23,23 @@ object SearchFlightService {
   // (see `SearchResult` companion object).
   // Note: A example based test is defined in `SearchFlightServiceTest`.
   //       You can also defined tests for `SearchResult` in `SearchResultTest`
-  def fromTwoClients(client1: SearchFlightClient, client2: SearchFlightClient): SearchFlightService =
+  def fromTwoClients(client1: SearchFlightClient, client2: SearchFlightClient)(implicit ec: ExecutionContext): SearchFlightService =
     new SearchFlightService {
-      def search(from: Airport, to: Airport, date: LocalDate): IO[SearchResult] =
-        ???
+      // def search(from: Airport, to: Airport, date: LocalDate): IO[SearchResult] =
+      //   for {
+      //     list1 <- client1.search(from, to, date).handleErrorWith(_ => IO(Nil))
+      //     list2 <- client2.search(from, to, date).handleErrorWith(_ => IO(Nil)) 
+      //   } yield SearchResult(list1 ++ list2)
+      def search(from: Airport, to: Airport, date: LocalDate): IO[SearchResult] = {
+        
+        def callClient(client: SearchFlightClient) = client.search(from, to, date).handleErrorWith(_ => IO(Nil))
+        
+        callClient(client1)
+        .parZip(callClient(client2))(ec)
+        .map {
+          case (l1, l2) => SearchResult(l1 ++ l2) 
+        }
+      }
 
     }
 
@@ -44,10 +57,18 @@ object SearchFlightService {
   // a list of `SearchFlightClient`.
   // Note: You can use a recursion/loop/foldLeft to call all the clients and combine their results.
   // Note: We can assume `clients` to contain less than 100 elements.
-  def fromClients(clients: List[SearchFlightClient]): SearchFlightService =
+  def fromClients(clients: List[SearchFlightClient])(implicit ec: ExecutionContext): SearchFlightService =
     new SearchFlightService {
       def search(from: Airport, to: Airport, date: LocalDate): IO[SearchResult] =
-        ???
+        clients
+          .parTraverse(_.search(from, to, date))(ec)
+          .map(listOfLists => SearchResult(listOfLists.flatten))
+      // def search(from: Airport, to: Airport, date: LocalDate): IO[SearchResult] =
+      //   clients.foldLeft(IO(SearchResult(Nil))) {
+      //     (sr, sc) => sr.flatMap { sr =>
+      //       sc.search(from, to, date).map(flights => SearchResult(flights ++ sr.flights))
+      //     }
+      //   }
     }
 
   // 5. Refactor `fromClients` using `sequence` or `traverse` from the `IO` companion object.
